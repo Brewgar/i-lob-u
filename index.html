@@ -4,31 +4,36 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>ASCII</title>
-
 <style>
-body {
+html, body {
   margin: 0;
+  padding: 0;
   background: black;
-  color: white;
+  overflow: hidden;
+  height: 100%;
+}
 
-
+/* ASCII’yi merkeze sabitle */
+body {
   display: flex;
   justify-content: center;
   align-items: center;
 
-  height: 100vh;
-  overflow: hidden;
+  /* kritik: mobil zoom / font scaling’i sabitle */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
+/* tüm ASCII output’u zorla stabilize et */
+* {
+  font-family: "Courier New", monospace !important;
+  white-space: pre !important;
+  line-height: 1 !important;
+  font-size: 14px !important;
+}
 
-#ascii-container {
-  font-family: "Courier New", Courier, monospace;
-  white-space: pre;
-  font-size: 14px;
-  line-height: 14px;
-
-
+/* taşmayı tamamen engelle */
+body > * {
   max-width: 100vw;
   max-height: 100vh;
   overflow: hidden;
@@ -38,9 +43,6 @@ body {
 
 <body>
 
-<div id="ascii-container"></div>
-
-<!-- yes mamm :3 -->
 <script src="https://www.qqpr.com/ascii/js/1021.js"></script>
 
 </body>
