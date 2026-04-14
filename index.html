@@ -8,35 +8,26 @@
 html, body {
   margin: 0;
   padding: 0;
+  height: 100%;
   background: black;
   overflow: hidden;
-  height: 100%;
 }
 
-/* ASCII’yi merkeze sabitle */
+/* KRİTİK: scripti BOĞMAYAN minimum stil */
 body {
   display: flex;
   justify-content: center;
   align-items: center;
 
-  /* kritik: mobil zoom / font scaling’i sabitle */
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
+  font-family: "Courier New", monospace;
+  
+  /* ASCII görünürlük fix */
+  color: #00ff66;
 }
 
-/* tüm ASCII output’u zorla stabilize et */
+/* bazı scriptler span/div ile renk verir, bunu bozma */
 * {
-  font-family: "Courier New", monospace !important;
-  white-space: pre !important;
-  line-height: 1 !important;
-  font-size: 14px !important;
-}
-
-/* taşmayı tamamen engelle */
-body > * {
-  max-width: 100vw;
-  max-height: 100vh;
-  overflow: hidden;
+  background: transparent !important;
 }
 </style>
 </head>
