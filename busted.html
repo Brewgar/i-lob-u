@@ -43,6 +43,10 @@
 </head>
 <body>
   <div id="flash"></div>
+
+  <!-- His Theme — ayrı dosya olarak yüklenir, loop açık -->
+  <audio id="bgm" src="his_theme.ogg" loop preload="auto"></audio>
+
   <div id="scene">
     <img id="portrait" src="mirac_the_cursed_one.png" alt="mirac" />
     <div id="textbox">
@@ -60,24 +64,47 @@
       "Dur bir dakika...",
       "Bu ne demek oluyor?",
       "Demek oluyor ki\nburaya izinsiz\ngirmeye çalıştın.",
-      "Kendini iyi hissediyor\nmusun?",
-      "Düşün biraz.",
+      "Kendini iyi hissediyor\nmusun?",  // index 6 — son 2. satır
+      "Düşün biraz.",                    // index 7 — son satır
     ];
+
+    // Son 2 satırdan itibaren müziği kapat (lines.length - 2 = 6. index)
+    var FADEOUT_FROM_LINE = lines.length - 2; // 6
 
     var dialogueEl = document.getElementById("dialogue");
     var cursorEl   = document.getElementById("cursor");
     var arrowEl    = document.getElementById("next-arrow");
     var scene      = document.getElementById("scene");
     var flash      = document.getElementById("flash");
+    var bgm        = document.getElementById("bgm");
 
     var lineIndex   = 0;
     var charIndex   = 0;
     var typing      = false;
     var typingTimer = null;
     var finished    = false;
+    var fadeTimer   = null;
+
+    // ── Müzik fade-out ───────────────────────────────────────────────────
+    function fadeMusicOut(duration) {
+      if (fadeTimer) return;
+      var startVol  = bgm.volume;
+      var steps     = 40;
+      var interval  = duration / steps;
+      var decrement = startVol / steps;
+      fadeTimer = setInterval(function() {
+        if (bgm.volume > decrement) {
+          bgm.volume = Math.max(0, bgm.volume - decrement);
+        } else {
+          bgm.volume = 0;
+          bgm.pause();
+          clearInterval(fadeTimer);
+        }
+      }, interval);
+    }
 
     // ── Web Audio API — Buffer sistemi ───────────────────────────────────
-    var AudioCtx = window.AudioContext || window.webkitAudioContext;
+    var AudioCtx    = window.AudioContext || window.webkitAudioContext;
     var audioCtx    = null;
     var voiceBuffer = null;
     var roarBuffer  = null;
@@ -123,7 +150,6 @@
 
     function playTransitionSfx(callback) {
       playBuffer(roarBuffer, 0.9);
-      // Roar ~8.5sn ama flash için 0.8sn bekle
       setTimeout(callback, 800);
     }
 
@@ -136,6 +162,11 @@
       arrowEl.style.display = "none";
       dialogueEl.textContent = "";
       charIndex = 0;
+
+      // Son 2 satıra gelinince müziği yavaşça kapat (2sn fade)
+      if (lineIndex >= FADEOUT_FROM_LINE && bgm.volume > 0 && !fadeTimer) {
+        fadeMusicOut(2000);
+      }
 
       function typeChar() {
         if (charIndex < text.length) {
@@ -162,6 +193,10 @@
         cursorEl.classList.add("active");
         arrowEl.style.display = "block";
         if (lineIndex >= lines.length - 1) finished = true;
+        // Hızlı geçişte de fade başlasın
+        if (lineIndex >= FADEOUT_FROM_LINE && bgm.volume > 0 && !fadeTimer) {
+          fadeMusicOut(2000);
+        }
         return;
       }
       if (finished) { triggerEndSequence(); return; }
@@ -187,15 +222,18 @@
       if (e.key === "Enter" || e.key === " " || e.key === "z" || e.key === "Z") advance();
     }
 
-    // İlk etkileşimde AudioContext başlat + her iki buffer'ı decode et
+    // İlk etkileşimde AudioContext + BGM başlat
     function firstInteraction() {
       document.removeEventListener("click", firstInteraction);
       document.removeEventListener("keydown", firstInteraction);
+
+      // BGM'i başlat
+      bgm.volume = 0.7;
+      bgm.play().catch(function(){});
+
       initAudio(function() {
         document.addEventListener("click", advance);
         document.addEventListener("keydown", keyHandler);
-        // Eğer ilk satır zaten yazılıyorsa ses açıldı, devam et
-        // Değilse ilk satırı başlat
         if (!typing && lineIndex === 0 && dialogueEl.textContent === "") {
           typeLine(lines[0]);
         }
@@ -209,7 +247,7 @@
       setTimeout(function() {
         scene.classList.add("visible");
         setTimeout(function() {
-          // Sessiz olarak ilk satırı yaz; ses ilk tıklamada açılır
+          // Sessiz ilk satır — ses ilk tıklamada açılır
           typing = true;
           cursorEl.classList.remove("active");
           arrowEl.style.display = "none";
