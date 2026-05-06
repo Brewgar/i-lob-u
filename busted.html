@@ -67,16 +67,39 @@
 
   <script>
     // ── Ana diyalog ───────────────────────────────────────────────────────
-    var lines = [
-      "Howdy... You looked into the game files,\ndidn't you.",
-      "They were hidden away so carefully,\nyet you found them.",
-      "And you altered the values to come here.",
-      "Now, wait just a moment...",
-      "Do you know what this means?",
-      "It means you have wandered\ninto a place\nyou were not meant to see.",
-      "Is this the kind of person\nyou want to be?",
-      "Perhaps you should go back, and think it over with a nice cup of tea.",
-    ];
+var lines = [
+    "* (A strange light fills the room.)",
+    "* (Twilight is shining through the barrier.)",
+    "* (It seems your journey is finally over.)",
+    "* (You're filled with DETERMINATION.)",
+    "Human...",
+    "It was not supposed to be like this.",
+    "You are not supposed to be here.\nNot yet. Not ever, if I had my way.",
+    "...",
+    "I know what you did to reach this place.",
+    "The paths you forced open.\nThe warnings you chose to ignore.",
+    "You went somewhere you were\nforbidden to go.",
+    "... I understand. It is in your nature\nto be curious.",
+    "But some doors...",
+    "...",
+    "But some doors are locked away for a reason.",
+    "Some places are sealed away to\nprotect the innocent.",
+    "Some places are sealed away to\nsave the aggrieved.",
+    "By unearthing those secrets...",
+    "By stepping into this hall...",
+    "You have forced a hand I never\nwanted to play.",
+    "I had hoped you would stay away.",
+    "I had hoped you would live a long,\nhappy life, far from this cursed\place.",
+    "But now, you stand before me.",
+    "I am not ready.",
+    "I did not want to do this.",
+    "But the choices you made have led\nyou right to the end.",
+    "There is no turning back now.\nFor either of us.",
+    "...",
+    "I am so sorry, young one.",
+    "It was nice to meet you.",
+    "Goodbye.",
+];
 
     // Fotoğrafa 3 kez tıklanınca söylenecek özel satırlar
     var tacizLines = [
@@ -84,7 +107,7 @@
       "Beni mi taciz etmeye\nçalışıyorsun?",
     ];
 
-    var FADEOUT_FROM_LINE = lines.length - 2; // son 2 satırda müzik kapanır
+    var FADEOUT_FROM_LINE = lines.length - 5; // son 2 satırda müzik kapanır
 
     var dialogueEl = document.getElementById("dialogue");
     var cursorEl   = document.getElementById("cursor");
