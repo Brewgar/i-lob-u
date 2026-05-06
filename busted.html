@@ -43,6 +43,14 @@
       display: block;
     }
 
+    #portrait.broken { display: none; }
+    #portrait-fallback {
+      display: none;
+      width: 220px;
+      height: 220px;
+    }
+    #portrait.broken ~ #portrait-fallback { display: block; }
+
     #textbox {
       width: 100%;
       border: 3px solid #fff;
@@ -100,38 +108,56 @@
       to   { transform: translateY(4px); }
     }
 
-    #continue-btn {
-      margin-top: 8px;
-      background: transparent;
-      border: 2px solid #fff;
-      color: #fff;
-      font-family: 'Press Start 2P', monospace;
-      font-size: 8px;
-      padding: 10px 20px;
-      cursor: pointer;
-      display: none;
-      letter-spacing: 0.05em;
+    /* Flash overlay */
+    #flash {
+      position: fixed;
+      inset: 0;
+      background: #fff;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 9999;
     }
-
-    #continue-btn:hover { background: #fff; color: #000; }
+    #flash.on {
+      opacity: 1;
+      pointer-events: all;
+      transition: opacity 0.05s ease;
+    }
   </style>
 </head>
 <body>
 
+  <div id="flash"></div>
+
   <div id="scene">
     <img id="portrait" src="mirac_the_cursed_one.png" alt="mirac" />
+    <!-- Fotoğraf yüklenemezse pixel-art SVG fallback -->
+    <svg id="portrait-fallback" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg" width="220" height="220" style="image-rendering:pixelated;">
+      <rect width="220" height="220" fill="#111"/>
+      <rect x="70" y="30" width="80" height="70" fill="#fff"/>
+      <rect x="88" y="52" width="14" height="14" fill="#000"/>
+      <rect x="118" y="52" width="14" height="14" fill="#000"/>
+      <rect x="92" y="56" width="6" height="6" fill="#fff"/>
+      <rect x="122" y="56" width="6" height="6" fill="#fff"/>
+      <rect x="90" y="80" width="40" height="6" fill="#000"/>
+      <rect x="60" y="104" width="100" height="80" fill="#fff"/>
+      <rect x="20" y="110" width="40" height="20" fill="#fff"/>
+      <rect x="160" y="110" width="40" height="20" fill="#fff"/>
+      <rect x="70" y="184" width="30" height="36" fill="#fff"/>
+      <rect x="120" y="184" width="30" height="36" fill="#fff"/>
+    </svg>
+
     <div id="textbox">
       <div id="speaker">* Miraç</div>
       <div id="dialogue"></div><span id="cursor"></span>
       <div id="next-arrow">▼</div>
     </div>
-    <button id="continue-btn" onclick="window.location.href='index.html'">* geri dön</button>
   </div>
 
-  <!-- Asgore voice sfx — Undertale Wiki'den direkt ogg -->
-  <audio id="voice-sfx" src="https://static.wikia.nocookie.net/undertale/images/7/72/Asgore_voice.ogg" preload="auto"></audio>
-
   <script>
+    // Fotoğraf hata tespiti
+    const portrait = document.getElementById("portrait");
+    portrait.onerror = function() { this.classList.add("broken"); };
+
     const lines = [
       "HTML dosyasına\nbaktın, değil mi.",
       "Yorum satırına gizledim\nve sen buldun.",
@@ -143,25 +169,74 @@
       "Düşün biraz.",
     ];
 
-    const sfx = document.getElementById("voice-sfx");
     const dialogueEl = document.getElementById("dialogue");
-    const cursorEl = document.getElementById("cursor");
-    const arrowEl = document.getElementById("next-arrow");
-    const continueBtn = document.getElementById("continue-btn");
-    const scene = document.getElementById("scene");
+    const cursorEl   = document.getElementById("cursor");
+    const arrowEl    = document.getElementById("next-arrow");
+    const scene      = document.getElementById("scene");
+    const flash      = document.getElementById("flash");
 
-    let lineIndex = 0;
-    let charIndex = 0;
-    let typing = false;
+    let lineIndex  = 0;
+    let charIndex  = 0;
+    let typing     = false;
     let typingTimer = null;
+    let finished   = false;
 
-    function playBeep() {
+    // Web Audio API — harici ses dosyasına bağımlılık yok
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+
+    function initAudio() {
+      if (!audioCtx) audioCtx = new AudioCtx();
+    }
+
+    let voicePhase = 0;
+    const FREQ_STEPS = [440, 466, 415, 494, 392];
+
+    function playVoiceBeep() {
       try {
-        sfx.currentTime = 0;
-        sfx.volume = 0.5;
-        sfx.play().catch(() => {});
+        initAudio();
+        const now  = audioCtx.currentTime;
+        const osc  = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "square";
+        osc.frequency.setValueAtTime(FREQ_STEPS[voicePhase % FREQ_STEPS.length], now);
+        voicePhase++;
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.18, now + 0.004);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.055);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.06);
       } catch(e) {}
     }
+
+    function playTransitionSfx(callback) {
+      try {
+        initAudio();
+        const now   = audioCtx.currentTime;
+        const notes = [261.63, 329.63, 392.00, 523.25, 659.25, 1046.50];
+        notes.forEach(function(freq, i) {
+          const osc  = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          const t    = now + i * 0.07;
+          osc.type = "square";
+          osc.frequency.setValueAtTime(freq, t);
+          gain.gain.setValueAtTime(0, t);
+          gain.gain.linearRampToValueAtTime(0.28, t + 0.01);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(t);
+          osc.stop(t + 0.3);
+        });
+        setTimeout(callback, 420);
+      } catch(e) {
+        setTimeout(callback, 420);
+      }
+    }
+
+    const CHAR_DELAY = 38;
 
     function typeLine(text) {
       typing = true;
@@ -169,23 +244,20 @@
       arrowEl.style.display = "none";
       dialogueEl.textContent = "";
       charIndex = 0;
+      voicePhase = 0;
 
       function typeChar() {
         if (charIndex < text.length) {
-          dialogueEl.textContent += text[charIndex];
-          if (text[charIndex] !== " " && text[charIndex] !== "\n" && charIndex % 2 === 0) {
-            playBeep();
-          }
+          var ch = text[charIndex];
+          dialogueEl.textContent += ch;
+          if (ch !== " " && ch !== "\n") playVoiceBeep();
           charIndex++;
-          typingTimer = setTimeout(typeChar, 42);
+          typingTimer = setTimeout(typeChar, CHAR_DELAY);
         } else {
           typing = false;
           cursorEl.classList.add("active");
-          if (lineIndex < lines.length - 1) {
-            arrowEl.style.display = "block";
-          } else {
-            continueBtn.style.display = "inline-block";
-          }
+          arrowEl.style.display = "block";
+          if (lineIndex >= lines.length - 1) finished = true;
         }
       }
       typeChar();
@@ -196,10 +268,13 @@
         clearTimeout(typingTimer);
         dialogueEl.textContent = lines[lineIndex];
         typing = false;
-        charIndex = lines[lineIndex].length;
         cursorEl.classList.add("active");
-        arrowEl.style.display = lineIndex < lines.length - 1 ? "block" : "none";
-        if (lineIndex >= lines.length - 1) continueBtn.style.display = "inline-block";
+        arrowEl.style.display = "block";
+        if (lineIndex >= lines.length - 1) finished = true;
+        return;
+      }
+      if (finished) {
+        triggerEndSequence();
         return;
       }
       if (lineIndex < lines.length - 1) {
@@ -209,15 +284,28 @@
       }
     }
 
-    document.addEventListener("click", () => advance());
-    document.addEventListener("keydown", e => {
-      if (e.key === "Enter" || e.key === " " || e.key === "z" || e.key === "Z") advance();
-    });
+    function triggerEndSequence() {
+      document.removeEventListener("click", advance);
+      document.removeEventListener("keydown", keyHandler);
+      playTransitionSfx(function() {
+        flash.classList.add("on");
+        setTimeout(function() {
+          window.location.replace("https://www.youtube.com/watch?v=QDia3e12czc");
+        }, 150);
+      });
+    }
 
-    window.addEventListener("load", () => {
-      setTimeout(() => {
+    function keyHandler(e) {
+      if (e.key === "Enter" || e.key === " " || e.key === "z" || e.key === "Z") advance();
+    }
+
+    document.addEventListener("click", advance);
+    document.addEventListener("keydown", keyHandler);
+
+    window.addEventListener("load", function() {
+      setTimeout(function() {
         scene.classList.add("visible");
-        setTimeout(() => typeLine(lines[0]), 400);
+        setTimeout(function() { typeLine(lines[0]); }, 400);
       }, 300);
     });
   </script>
