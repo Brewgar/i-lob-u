@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>...</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      background: #000;
+      color: #fff;
+      width: 100%;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Press Start 2P', monospace;
+      overflow: hidden;
+    }
+
+    #scene {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 32px;
+      padding: 40px 24px;
+      max-width: 600px;
+      width: 100%;
+      opacity: 0;
+      transition: opacity 0.8s ease;
+    }
+
+    #scene.visible { opacity: 1; }
+
+    #portrait {
+      width: 220px;
+      height: auto;
+      image-rendering: pixelated;
+      display: block;
+    }
+
+    #textbox {
+      width: 100%;
+      border: 3px solid #fff;
+      padding: 20px 24px 20px 20px;
+      position: relative;
+      min-height: 110px;
+      background: #000;
+    }
+
+    #speaker {
+      font-size: 9px;
+      color: #fff;
+      margin-bottom: 12px;
+      letter-spacing: 0.05em;
+    }
+
+    #dialogue {
+      font-size: 9px;
+      line-height: 2;
+      color: #fff;
+      white-space: pre-wrap;
+      min-height: 54px;
+    }
+
+    #cursor {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      background: #fff;
+      margin-left: 2px;
+      vertical-align: middle;
+      animation: blink 0.6s step-end infinite;
+      opacity: 0;
+    }
+
+    #cursor.active { opacity: 1; }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0; }
+    }
+
+    #next-arrow {
+      position: absolute;
+      bottom: 10px;
+      right: 14px;
+      font-size: 9px;
+      color: #fff;
+      animation: bounce 0.5s ease-in-out infinite alternate;
+      display: none;
+    }
+
+    @keyframes bounce {
+      from { transform: translateY(0); }
+      to   { transform: translateY(4px); }
+    }
+
+    #continue-btn {
+      margin-top: 8px;
+      background: transparent;
+      border: 2px solid #fff;
+      color: #fff;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 8px;
+      padding: 10px 20px;
+      cursor: pointer;
+      display: none;
+      letter-spacing: 0.05em;
+    }
+
+    #continue-btn:hover { background: #fff; color: #000; }
+  </style>
+</head>
+<body>
+
+  <div id="scene">
+    <img id="portrait" src="mirac_the_cursed_one.png" alt="mirac" />
+    <div id="textbox">
+      <div id="speaker">* Miraç</div>
+      <div id="dialogue"></div><span id="cursor"></span>
+      <div id="next-arrow">▼</div>
+    </div>
+    <button id="continue-btn" onclick="window.location.href='index.html'">* geri dön</button>
+  </div>
+
+  <!-- Asgore voice sfx — Undertale Wiki'den direkt ogg -->
+  <audio id="voice-sfx" src="https://static.wikia.nocookie.net/undertale/images/7/72/Asgore_voice.ogg" preload="auto"></audio>
+
+  <script>
+    const lines = [
+      "HTML dosyasına\nbaktın, değil mi.",
+      "Yorum satırına gizledim\nve sen buldun.",
+      "Ve şifreyi denedin.",
+      "Dur bir dakika...",
+      "Bu ne demek oluyor?",
+      "Demek oluyor ki\nburaya izinsiz\ngirmeye çalıştın.",
+      "Kendini iyi hissediyor\nmusun?",
+      "Düşün biraz.",
+    ];
+
+    const sfx = document.getElementById("voice-sfx");
+    const dialogueEl = document.getElementById("dialogue");
+    const cursorEl = document.getElementById("cursor");
+    const arrowEl = document.getElementById("next-arrow");
+    const continueBtn = document.getElementById("continue-btn");
+    const scene = document.getElementById("scene");
+
+    let lineIndex = 0;
+    let charIndex = 0;
+    let typing = false;
+    let typingTimer = null;
+
+    function playBeep() {
+      try {
+        sfx.currentTime = 0;
+        sfx.volume = 0.5;
+        sfx.play().catch(() => {});
+      } catch(e) {}
+    }
+
+    function typeLine(text) {
+      typing = true;
+      cursorEl.classList.remove("active");
+      arrowEl.style.display = "none";
+      dialogueEl.textContent = "";
+      charIndex = 0;
+
+      function typeChar() {
+        if (charIndex < text.length) {
+          dialogueEl.textContent += text[charIndex];
+          if (text[charIndex] !== " " && text[charIndex] !== "\n" && charIndex % 2 === 0) {
+            playBeep();
+          }
+          charIndex++;
+          typingTimer = setTimeout(typeChar, 42);
+        } else {
+          typing = false;
+          cursorEl.classList.add("active");
+          if (lineIndex < lines.length - 1) {
+            arrowEl.style.display = "block";
+          } else {
+            continueBtn.style.display = "inline-block";
+          }
+        }
+      }
+      typeChar();
+    }
+
+    function advance() {
+      if (typing) {
+        clearTimeout(typingTimer);
+        dialogueEl.textContent = lines[lineIndex];
+        typing = false;
+        charIndex = lines[lineIndex].length;
+        cursorEl.classList.add("active");
+        arrowEl.style.display = lineIndex < lines.length - 1 ? "block" : "none";
+        if (lineIndex >= lines.length - 1) continueBtn.style.display = "inline-block";
+        return;
+      }
+      if (lineIndex < lines.length - 1) {
+        lineIndex++;
+        arrowEl.style.display = "none";
+        typeLine(lines[lineIndex]);
+      }
+    }
+
+    document.addEventListener("click", () => advance());
+    document.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " " || e.key === "z" || e.key === "Z") advance();
+    });
+
+    window.addEventListener("load", () => {
+      setTimeout(() => {
+        scene.classList.add("visible");
+        setTimeout(() => typeLine(lines[0]), 400);
+      }, 300);
+    });
+  </script>
+</body>
+</html>
